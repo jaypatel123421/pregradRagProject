@@ -8,9 +8,11 @@ Endpoints:
   GET  /health          — Health check
 """
 import os
+import tempfile
+import shutil
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
@@ -36,11 +38,8 @@ if not QDRANT_URL or not QDRANT_API_KEY:
         "  QDRANT_API_KEY=your-qdrant-cloud-api-key"
     )
 
-# Path to the DaVinci Resolve Beginner's Guide PDF
-PDF_PATH = os.getenv(
-    "PDF_PATH",
-    "/Users/jaypatel/Downloads/DaVinci-Resolve-16_Beginners-Guide.pdf",
-)
+# Path to the PDF (on Render, use the /ingest/upload endpoint instead)
+PDF_PATH = os.getenv("PDF_PATH", "")
 
 pipeline: RAGPipeline | None = None
 
@@ -92,8 +91,7 @@ app.add_middleware(
 
 class IngestRequest(BaseModel):
     pdf_path: str = Field(
-        default=PDF_PATH,
-        description="Absolute path to the PDF file to ingest.",
+        description="Absolute path to the PDF file to ingest (local filesystem)."
     )
     force: bool = Field(
         default=False,
@@ -163,6 +161,38 @@ async def ingest(req: IngestRequest):
         "chunks_indexed": count,
         "message": f"Indexed {count} chunks from the PDF.",
     }
+
+
+@app.post("/ingest/upload", tags=["Ingestion"])
+async def ingest_upload(file: UploadFile = File(...), force: bool = False):
+    """
+    Upload a PDF file and ingest it into Qdrant.
+    The file is saved temporarily, processed, then removed.
+    """
+    if pipeline is None:
+        raise HTTPException(status_code=503, detail="Pipeline not initialized")
+
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
+
+    # Save uploaded file to a temp location
+    tmp_path = os.path.join(tempfile.gettempdir(), file.filename)
+    try:
+        with open(tmp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        print(f"📄 Uploaded PDF: {file.filename} (force={force})")
+        count = pipeline.ingest_pdf(tmp_path, force=force)
+        return {
+            "success": True,
+            "chunks_indexed": count,
+            "message": f"Indexed {count} chunks from '{file.filename}'.",
+            "filename": file.filename,
+        }
+    finally:
+        # Clean up temp file
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 @app.post("/query", response_model=QueryResponse, tags=["Query"])
