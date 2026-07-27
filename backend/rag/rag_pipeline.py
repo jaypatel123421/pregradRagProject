@@ -24,19 +24,32 @@ class RAGPipeline:
     def __init__(
         self,
         api_key: str,
-        qdrant_host: str = "localhost",
-        qdrant_port: int = 6333,
+        qdrant_host: str | None = None,
+        qdrant_port: int | None = None,
+        qdrant_url: str | None = None,
+        qdrant_api_key: str | None = None,
         collection_name: str = "davinci_resolve_guide",
         chunk_size: int = 800,
         chunk_overlap: int = 100,
     ):
         self.embedder = OpenAIEmbedder(api_key=api_key)
-        self.store = QdrantVectorStore(
-            host=qdrant_host,
-            port=qdrant_port,
-            collection_name=collection_name,
-            vector_size=OpenAIEmbedder.DIMENSION,  # 1536 for text-embedding-3-small
-        )
+
+        if qdrant_url and qdrant_api_key:
+            # Cloud connection
+            self.store = QdrantVectorStore(
+                url=qdrant_url,
+                api_key=qdrant_api_key,
+                collection_name=collection_name,
+                vector_size=OpenAIEmbedder.DIMENSION,  # 1536 for text-embedding-3-small
+            )
+        else:
+            # Local connection (default: localhost:6333)
+            self.store = QdrantVectorStore(
+                host=qdrant_host or "localhost",
+                port=qdrant_port or 6333,
+                collection_name=collection_name,
+                vector_size=OpenAIEmbedder.DIMENSION,
+            )
         self.loader = DocumentLoader(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self.generator = OpenAIGenerator(api_key=api_key)
 

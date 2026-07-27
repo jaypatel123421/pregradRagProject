@@ -1,31 +1,49 @@
 """
-Qdrant vector store — uses the modern query_points() API (qdrant-client >= 1.7).
+Qdrant vector store — supports both local and cloud (Qdrant Cloud) connections.
+Uses the modern query_points() API (qdrant-client >= 1.7).
+
+For local:  QdrantVectorStore(host="localhost", port=6333, ...)
+For cloud:  QdrantVectorStore(url="https://xxxx.cloud.qdrant.io:6333", api_key="...", ...)
 """
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
     VectorParams,
     PointStruct,
-    QueryRequest,
 )
 import uuid
 
 
 class QdrantVectorStore:
-    """Persistent vector store backed by Qdrant."""
+    """Persistent vector store backed by Qdrant (local or cloud)."""
 
     def __init__(
         self,
-        host: str = "localhost",
-        port: int = 6333,
+        host: str | None = None,
+        port: int | None = None,
+        url: str | None = None,
+        api_key: str | None = None,
         collection_name: str = "davinci_resolve_guide",
         vector_size: int = 1536,
     ):
-        self.client = QdrantClient(
-            host=host,
-            port=port,
-            check_compatibility=False,  # suppress version mismatch warning
-        )
+        if url and api_key:
+            # Cloud connection
+            self.client = QdrantClient(
+                url=url,
+                api_key=api_key,
+                check_compatibility=False,
+            )
+        elif host and port:
+            # Local connection
+            self.client = QdrantClient(
+                host=host,
+                port=port,
+                check_compatibility=False,
+            )
+        else:
+            raise ValueError(
+                "Provide either (url + api_key) for cloud or (host + port) for local."
+            )
         self.collection_name = collection_name
         self.vector_size = vector_size
         self._ensure_collection()
