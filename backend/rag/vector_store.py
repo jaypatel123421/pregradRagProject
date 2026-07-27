@@ -1,9 +1,8 @@
 """
-Qdrant vector store — supports both local and cloud (Qdrant Cloud) connections.
+Qdrant vector store — cloud-only via Qdrant Cloud.
 Uses the modern query_points() API (qdrant-client >= 1.7).
 
-For local:  QdrantVectorStore(host="localhost", port=6333, ...)
-For cloud:  QdrantVectorStore(url="https://xxxx.cloud.qdrant.io:6333", api_key="...", ...)
+Usage: QdrantVectorStore(url="https://xxxx.cloud.qdrant.io:6333", api_key="...", ...)
 """
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -15,35 +14,25 @@ import uuid
 
 
 class QdrantVectorStore:
-    """Persistent vector store backed by Qdrant (local or cloud)."""
+    """Persistent vector store backed by Qdrant Cloud."""
 
     def __init__(
         self,
-        host: str | None = None,
-        port: int | None = None,
-        url: str | None = None,
-        api_key: str | None = None,
+        url: str,
+        api_key: str,
         collection_name: str = "davinci_resolve_guide",
         vector_size: int = 1536,
     ):
-        if url and api_key:
-            # Cloud connection
-            self.client = QdrantClient(
-                url=url,
-                api_key=api_key,
-                check_compatibility=False,
-            )
-        elif host and port:
-            # Local connection
-            self.client = QdrantClient(
-                host=host,
-                port=port,
-                check_compatibility=False,
-            )
-        else:
+        if not url or not api_key:
             raise ValueError(
-                "Provide either (url + api_key) for cloud or (host + port) for local."
+                "Qdrant Cloud requires both 'url' and 'api_key'. "
+                "Set QDRANT_URL and QDRANT_API_KEY in your .env file."
             )
+        self.client = QdrantClient(
+            url=url,
+            api_key=api_key,
+            check_compatibility=False,
+        )
         self.collection_name = collection_name
         self.vector_size = vector_size
         self._ensure_collection()

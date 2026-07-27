@@ -24,11 +24,17 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-QDRANT_URL = os.getenv("QDRANT_URL", "")           # cloud: "https://xxxx.cloud.qdrant.io:6333"
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")    # cloud: Qdrant cloud API key
-QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")  # local fallback
-QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))  # local fallback
+QDRANT_URL = os.getenv("QDRANT_URL", "")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "davinci_resolve_guide")
+
+if not QDRANT_URL or not QDRANT_API_KEY:
+    raise RuntimeError(
+        "Qdrant Cloud requires both QDRANT_URL and QDRANT_API_KEY to be set in .env. "
+        "Example:\n"
+        "  QDRANT_URL=https://xxxx-xxxxx.us-east-1-0.aws.cloud.qdrant.io:6333\n"
+        "  QDRANT_API_KEY=your-qdrant-cloud-api-key"
+    )
 
 # Path to the DaVinci Resolve Beginner's Guide PDF
 PDF_PATH = os.getenv(
@@ -51,10 +57,8 @@ async def lifespan(app: FastAPI):
 
     pipeline = RAGPipeline(
         api_key=OPENAI_API_KEY,
-        qdrant_url=QDRANT_URL or None,
-        qdrant_api_key=QDRANT_API_KEY or None,
-        qdrant_host=QDRANT_HOST,
-        qdrant_port=QDRANT_PORT,
+        qdrant_url=QDRANT_URL,
+        qdrant_api_key=QDRANT_API_KEY,
         collection_name=COLLECTION_NAME,
     )
     print("✅ RAG pipeline initialized")
