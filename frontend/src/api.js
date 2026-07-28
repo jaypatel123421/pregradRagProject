@@ -1,6 +1,6 @@
 // API client for the DaVinci Resolve RAG backend
 
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = 'https://pregradragproject-a089.onrender.com';
 
 export async function getStatus() {
   const res = await fetch(`${BASE_URL}/status`);
