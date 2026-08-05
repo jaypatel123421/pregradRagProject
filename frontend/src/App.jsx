@@ -142,7 +142,7 @@ export default function App() {
       <main className="main">
         {/* Hero */}
         <section className="hero">
-          <div className="hero-badge">🎯 RAG · Qdrant · Gemini</div>
+          <div className="hero-badge">🎯 RAG · Qdrant · OpenAI</div>
           <h1>
             Ask anything about <span>DaVinci Resolve</span>
           </h1>
